@@ -2,6 +2,7 @@ package src.pas.battleship.agents;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ public class ProbabilisticAgent
     public boolean first_move = true;
     int gridX = -1;
     int gridY =-1;
-    int[][] newgrid = new int[10][10];
+    int[][] newgrid = new int[30][30];
 
     @Override
     public Coordinate makeMove(final GameView game)
@@ -56,7 +57,8 @@ public class ProbabilisticAgent
 
         System.out.println(gridX);
         System.out.println(gridY);
-        System.out.println(probabilityGrid);
+        int[][] array = probabilityGrid;
+        System.out.println(Arrays.deepToString(array));
         
         if (first_move == false && outcomes[gridX][gridY] == EnemyBoard.Outcome.MISS ){
         this.updateGridAfterMissConsideringShipSize(probabilityGrid, gridX, gridY, shipSizes, gridWidth, gridHeight);
@@ -228,24 +230,64 @@ public int[] getShipSizesArray(Map<ShipType, Integer> shipsRemaining) {
         }
     }
 
+    private int lastHitX = -1;
+    private int lastHitY = -1;
+    private String hitStreakDirection = ""; // "HORIZONTAL", "VERTICAL", ""
+
     public void updateGridAfterHit(int[][] probabilityGrid, int hitX, int hitY, int gridWidth, int gridHeight, int increaseAmount) {
-        // Increase the probability of cardinally adjacent cells
-        // Up
-        if (hitY > 0) {
-            probabilityGrid[hitX][hitY - 1] += increaseAmount;
+        // If there's a last hit, check if the current hit is along the same line
+        if (lastHitX != -1 && lastHitY != -1) {
+            if (lastHitX == hitX) {
+                hitStreakDirection = "VERTICAL"; // The hit is along the same vertical line (column)
+            } else if (lastHitY == hitY) {
+                hitStreakDirection = "HORIZONTAL"; // The hit is along the same horizontal line (row)
+            } else {
+                hitStreakDirection = ""; // Reset if it's not along the same line
+            }
         }
-        // Down
-        if (hitY < gridHeight - 1) {
-            probabilityGrid[hitX][hitY + 1] += increaseAmount;
+
+        // Update probabilities based on the current direction of the hits
+        if (hitStreakDirection.equals("VERTICAL")) {
+            // Prioritize vertical cells adjacent to the hit
+            if (hitY > 0) {
+                if (probabilityGrid[hitX][hitY - 1] != 0){
+                probabilityGrid[hitX][hitY - 1] += increaseAmount * 2;}
+            }
+            if (hitY < gridHeight - 1) {
+                if (probabilityGrid[hitX][hitY + 1] != 0){
+                    probabilityGrid[hitX][hitY + 1] += increaseAmount * 2;}
+            }
+        } else if (hitStreakDirection.equals("HORIZONTAL")) {
+            // Prioritize horizontal cells adjacent to the hit
+            if (hitX > 0) {
+                if (probabilityGrid[hitX -1 ][hitY] != 0){
+                    probabilityGrid[hitX - 1][hitY] += increaseAmount * 2;}
+            }
+            if (hitX < gridWidth - 1) {
+                if (probabilityGrid[hitX + 1][hitY] != 0){
+                    probabilityGrid[hitX + 1][hitY] += increaseAmount * 2;}
+            }
+        } else {
+            // If there is no hit streak, or this is the first hit, update all adjacent cells normally
+            if (hitY > 0) {
+                probabilityGrid[hitX][hitY - 1] += increaseAmount;
+            }
+            if (hitY < gridHeight - 1) {
+                probabilityGrid[hitX][hitY + 1] += increaseAmount;
+            }
+            if (hitX > 0) {
+                probabilityGrid[hitX - 1][hitY] += increaseAmount;
+            }
+            if (hitX < gridWidth - 1) {
+                probabilityGrid[hitX + 1][hitY] += increaseAmount;
+            }
         }
-        // Left
-        if (hitX > 0) {
-            probabilityGrid[hitX - 1][hitY] += increaseAmount;
-        }
-        // Right
-        if (hitX < gridWidth - 1) {
-            probabilityGrid[hitX + 1][hitY] += increaseAmount;
-        }
+
+        // Update the last hit position
+        lastHitX = hitX;
+        lastHitY = hitY;
+    
+
         
         // Optional: Cap the probabilities to a maximum value if necessary
         for (int x = 0; x < gridWidth; x++) {
